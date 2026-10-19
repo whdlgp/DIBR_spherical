@@ -8,6 +8,7 @@ A Python implementation of Spherical DIBR, based on [DIBR_Legacy](https://github
 - **GPU Framework:** WGPU, replacing the Taichi backend used in the legacy project
 
 ![spherical_dibr](demo_output/erp_camera_walk_preview.webp)
+![spherical_dibr](demo_output/demo_interactive_preview.webp)
 
 ## Dataset
 
@@ -44,6 +45,22 @@ Spherical(ERP, Equirectangular projection) to Plane viewpoint rendering demo:
 uv run demo_erp2plane.py
 ```
 
+Interactive viewpoint rendering demo:
+
+```bash
+uv run demo_interactive.py
+```
+
+### Interactive Viewer Controls
+
+| Input | Action |
+|---|---|
+| W / A / S / D | Move forward / left / backward / right |
+| Space / Ctrl | Move up / down |
+| Shift | Move faster (2x speed) |
+| Mouse | Rotate camera view |
+| Esc | Exit viewer |
+
 ## Result
 
 Animated WebP demos.
@@ -60,6 +77,13 @@ Average render time: 7.30 ms (137.0 FPS)
 ```
 
 ![spherical_dibr](demo_output/erp_camera_walk.webp)
+
+</details>
+
+<details>
+<summary>Interactive viewpoint rendering</summary>
+
+![spherical_dibr](demo_output/demo_interactive.webp)
 
 </details>
 
