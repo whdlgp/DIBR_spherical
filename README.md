@@ -1,6 +1,7 @@
 # DIBR_spherical
 
-A Python implementation of Spherical DIBR, based on [DIBR_Legacy](https://github.com/whdlgp/DIBR_Legacy).
+A Python implementation of Spherical DIBR, based on [DIBR_Legacy](https://github.com/whdlgp/DIBR_Legacy).  
+I also used [DA360](https://github.com/whdlgp/DA360_inference) to generate example depth maps for this project.
 
 - **Input:** ERP images
 - **Output:** ERP and perspective plane projections
