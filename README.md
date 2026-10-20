@@ -7,20 +7,18 @@ A Python implementation of Spherical DIBR, based on [DIBR_Legacy](https://github
 - **Backends:** NumPy (CPU) and WGPU (GPU acceleration)
 - **GPU Framework:** WGPU, replacing the Taichi backend used in the legacy project
 
-<div>
-  <table align="left">
-    <tr>
-      <td>
-        <img src="demo_output/demo_interactive_preview.webp" width="300">
-      </td>
-      <td>
-        <img src="demo_output/demo_interactive_2_preview.webp" width="300">
-      </td>
-    </tr>
-  </table>
-</div>
+<table align="left">
+  <tr>
+    <td>
+      <img src="demo_output/demo_interactive_preview.webp" width="300">
+    </td>
+    <td>
+      <img src="demo_output/demo_interactive_2_preview.webp" width="300">
+    </td>
+  </tr>
+</table>
 
-<div style="clear: both;"></div>
+<br clear="all">
 
 ## Dataset
 
@@ -40,6 +38,26 @@ uv run python -m dummy_panorama_tool.dummy_panorama_creater
 ![spherical_dibr](demo_output/room_rgb.png)
 
 </details>
+
+Also, I found my old panorama photo. You can use it for demo.  
+Use it by changing 'data_dir' and 'src' in demo.
+
+<details>
+<summary>My old photo example</summary>
+
+![my old photo](test_input/input.jpg)
+
+</details>
+
+```python
+    # DIBR input data
+    data_dir = Path("dummy_panorama")
+    #data_dir = Path("test_input")
+...
+    # Read input data
+    src = DummyPanoramaReader(data_dir)
+    #src = DummyPanoramaReader(data_dir, image_name="input.jpg", depth_name="input_DA360_large_depth.png")
+```
 
 ## Setup
 
