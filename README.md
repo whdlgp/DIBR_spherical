@@ -7,8 +7,20 @@ A Python implementation of Spherical DIBR, based on [DIBR_Legacy](https://github
 - **Backends:** NumPy (CPU) and WGPU (GPU acceleration)
 - **GPU Framework:** WGPU, replacing the Taichi backend used in the legacy project
 
-![spherical_dibr](demo_output/erp_camera_walk_preview.webp)
-![spherical_dibr](demo_output/demo_interactive_preview.webp)
+<div>
+  <table align="left">
+    <tr>
+      <td>
+        <img src="demo_output/demo_interactive_preview.webp" width="300">
+      </td>
+      <td>
+        <img src="demo_output/demo_interactive_2_preview.webp" width="300">
+      </td>
+    </tr>
+  </table>
+</div>
+
+<div style="clear: both;"></div>
 
 ## Dataset
 
@@ -81,9 +93,16 @@ Average render time: 7.30 ms (137.0 FPS)
 </details>
 
 <details>
-<summary>Interactive viewpoint rendering</summary>
+<summary>Interactive viewpoint rendering, Dummy Panorama</summary>
 
 ![spherical_dibr](demo_output/demo_interactive.webp)
+
+</details>
+
+<details>
+<summary>Interactive viewpoint rendering, Real indoor image with DA360 depth</summary>
+
+![spherical_dibr](demo_output/demo_interactive_2.webp)
 
 </details>
 

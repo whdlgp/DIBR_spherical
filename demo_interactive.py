@@ -9,6 +9,7 @@ from util.interactive_viewer import InteractiveViewer
 if __name__ == "__main__":
     # DIBR input data
     data_dir = Path("dummy_panorama")
+    #data_dir = Path("test_input")
 
     # Interactive viewer parameter
     fps = 30
@@ -18,6 +19,7 @@ if __name__ == "__main__":
 
     # Read input data
     src = DummyPanoramaReader(data_dir)
+    #src = DummyPanoramaReader(data_dir, image_name="input.jpg", depth_name="input_DA360_large_depth.png")
 
     camera_dst = np.array([
         [600.0,   0.0, 399.5],
