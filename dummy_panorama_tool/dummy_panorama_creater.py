@@ -12,8 +12,8 @@ from matplotlib import colormaps
 class RenderConfig:
     width: int = 2048
     height: int = 1024
-    camera: tuple = (0.4, 0.1, -1.2)
-    light: tuple = (0.0, 1.25, 0.5)
+    camera: tuple = (0.4, -0.1, -1.2)
+    light: tuple = (0.0, -1.25, 0.5)
     room_min: tuple = (-3.5, -1.5, -4.5)
     room_max: tuple = (3.5, 1.5, 4.5)
     chunk_size: int = 250_000
@@ -187,7 +187,7 @@ def wood_floor(points):
 def room_material(points, normals):
     count = len(points)
     x, y, z = points.T
-    floor, ceiling = normals[:, 1] > 0.5, normals[:, 1] < -0.5
+    floor, ceiling = normals[:, 1] < -0.5, normals[:, 1] > 0.5
     wall = ~(floor | ceiling)
     noise = fbm(points * 3.0, 2)
 
@@ -198,16 +198,16 @@ def room_material(points, normals):
     color = np.where(floor[:, None], wood_floor(points), color)
     emission = np.zeros(count)
 
-    baseboard = wall & (y < -1.38)
-    color = np.where(baseboard[:, None], vec(0.92, 0.92, 0.9) * np.where(y < -1.385, 1.0, 0.6)[:, None], color)
+    baseboard = wall & (y > 1.38)
+    color = np.where(baseboard[:, None], vec(0.92, 0.92, 0.9) * np.where(y > 1.385, 1.0, 0.6)[:, None], color)
 
     back_wall = normals[:, 2] < -0.5
-    window = back_wall & (np.abs(x) < 1.2) & (y > -0.4) & (y < 1.0)
-    frame = window & ((np.abs(x) > 1.12) | (y < -0.33) | (y > 0.93))
-    mullion = window & ((np.abs(x) < 0.03) | (np.abs(np.abs(x) - 0.6) < 0.025) | (np.abs(y - 0.3) < 0.03))
+    window = back_wall & (np.abs(x) < 1.2) & (y < 0.4) & (y > -1.0)
+    frame = window & ((np.abs(x) > 1.12) | (y > 0.33) | (y < -0.93))
+    mullion = window & ((np.abs(x) < 0.03) | (np.abs(np.abs(x) - 0.6) < 0.025) | (np.abs(y + 0.3) < 0.03))
     glass = window & ~frame & ~mullion
 
-    t = np.clip((y + 0.4) / 1.4, 0, 1)
+    t = np.clip((0.4 - y) / 1.4, 0, 1)
     sky = np.stack([0.80 - 0.25 * t, 0.88 - 0.13 * t, np.ones(count)], axis=1)
     sky += (0.18 * fbm(np.stack([x * 2, y * 3, np.zeros(count)], axis=1)))[:, None]
 
@@ -216,20 +216,20 @@ def room_material(points, normals):
     emission = np.where(glass, 1.0, emission)
 
     front_wall = normals[:, 2] > 0.5
-    door = front_wall & (np.abs(x) < 0.55) & (y < 0.5)
-    u, v = (x + 0.55) / 1.1, (y + 1.5) / 2.0
+    door = front_wall & (np.abs(x) < 0.55) & (y > -0.5)
+    u, v = (x + 0.55) / 1.1, (1.5 - y) / 2.0
     panel = (u > 0.12) & (u < 0.88) & (((v > 0.08) & (v < 0.45)) | ((v > 0.55) & (v < 0.92)))
     grain = (0.9 + 0.2 * value_noise(np.stack([x * 4, y * 30, z * 0], axis=1)))[:, None]
     door_color = np.where(panel[:, None], vec(0.45, 0.28, 0.14), vec(0.30, 0.18, 0.09)) * grain
     color = np.where(door[:, None], door_color, color)
 
-    knob = door & ((x - 0.4) ** 2 + (y + 0.5) ** 2 < 0.04 ** 2)
+    knob = door & ((x - 0.4) ** 2 + (y - 0.5) ** 2 < 0.04 ** 2)
     color = np.where(knob[:, None], vec(0.85, 0.65, 0.2), color)
 
     for z_min, z_max in ((-3.0, -1.5), (1.0, 2.5)):
-        picture = (normals[:, 0] < -0.5) & (z > z_min) & (z < z_max) & (y > -0.2) & (y < 0.7)
-        border = picture & ((z < z_min + 0.05) | (z > z_max - 0.05) | (y < -0.15) | (y > 0.65))
-        u, v = (z - z_min) / (z_max - z_min), (y + 0.2) / 0.9
+        picture = (normals[:, 0] < -0.5) & (z > z_min) & (z < z_max) & (y < 0.2) & (y > -0.7)
+        border = picture & ((z < z_min + 0.05) | (z > z_max - 0.05) | (y > 0.15) | (y < -0.65))
+        u, v = (z - z_min) / (z_max - z_min), (0.2 - y) / 0.9
         phase = z_min * 2.0
 
         artwork = 0.5 + 0.5 * np.sin(np.stack([u * 9 + v * 3 + phase, v * 7 - u * 4 + 2 + phase, u * 5 + v * 8 + 4], axis=1))
@@ -261,7 +261,7 @@ def wood_material(base):
 
 
 def marble_material(points, normals):
-    value = 0.82 + 0.15 * np.sin(points[:, 1] * 6 + 8 * fbm(points * 2))
+    value = 0.82 + 0.15 * np.sin(-points[:, 1] * 6 + 8 * fbm(points * 2))
     return np.stack([value, value, value * 1.03], axis=1), np.zeros(len(points))
 
 
@@ -274,7 +274,7 @@ def ball_material(points, normals):
 
 
 def crate_material(points, normals):
-    y = points[:, 1]
+    y = -points[:, 1]
     row = np.floor(y / 0.12)
     fraction = y / 0.12 - row
     tone = 0.75 + 0.35 * hash_noise(row * 3.1)
@@ -286,7 +286,7 @@ def crate_material(points, normals):
 def shelf_material(points, normals):
     count = len(points)
     wood = vec(0.35, 0.22, 0.10) * (0.8 + 0.4 * value_noise(points * 20))[:, None]
-    y = points[:, 1] + 1.5
+    y = 1.5 - points[:, 1]
     row = np.floor(y / 0.42)
     fraction = y / 0.42 - row
     book_id = np.floor(points[:, 2] / 0.05) + row * 31
@@ -300,41 +300,41 @@ def shelf_material(points, normals):
 
 
 def shade_material(points, normals):
-    return vec(1.0, 0.88, 0.55) * (0.85 + 0.15 * normals[:, 1])[:, None], np.ones(len(points))
+    return vec(1.0, 0.88, 0.55) * (0.85 - 0.15 * normals[:, 1])[:, None], np.ones(len(points))
 
 
 def create_scene():
     scene = Scene()
-    floor = -1.5
+    floor = 1.5
 
-    scene.add_box((-1.6, floor, 0.3), (1.6, floor + 0.02, 3.3), rug_material)
-    scene.add_box((-0.8, -0.81, 1.0), (0.8, -0.75, 2.0), wood_material((0.45, 0.28, 0.14)), 0.2, 30)
+    scene.add_box((-1.6, floor - 0.02, 0.3), (1.6, floor, 3.3), rug_material)
+    scene.add_box((-0.8, 0.75, 1.0), (0.8, 0.81, 2.0), wood_material((0.45, 0.28, 0.14)), 0.2, 30)
 
     for x in (-0.78, 0.72):
         for z in (1.02, 1.92):
-            scene.add_box((x, floor, z), (x + 0.06, -0.81, z + 0.06), wood_material((0.40, 0.25, 0.12)))
+            scene.add_box((x, 0.81, z), (x + 0.06, floor, z + 0.06), wood_material((0.40, 0.25, 0.12)))
 
-    scene.add_sphere((0.25, -0.61, 1.55), 0.14, solid((0.85, 0.1, 0.1)), 0.7, 80)
-    scene.add_cylinder(-0.35, 1.4, 0.07, -0.75, -0.45, solid((0.15, 0.35, 0.8)), 0.5, 50)
-    scene.add_box((-0.1, -0.75, 1.2), (0.15, -0.70, 1.45), solid((0.15, 0.55, 0.25), 0.1))
+    scene.add_sphere((0.25, 0.61, 1.55), 0.14, solid((0.85, 0.1, 0.1)), 0.7, 80)
+    scene.add_cylinder(-0.35, 1.4, 0.07, 0.45, 0.75, solid((0.15, 0.35, 0.8)), 0.5, 50)
+    scene.add_box((-0.1, 0.70, 1.2), (0.15, 0.75, 1.45), solid((0.15, 0.55, 0.25), 0.1))
 
     sofa = solid((0.15, 0.5, 0.55), 0.15)
-    scene.add_box((2.2, floor, 0.4), (3.5, -1.12, 3.1), sofa)
-    scene.add_box((3.15, -1.12, 0.4), (3.5, -0.5, 3.1), sofa)
-    scene.add_box((2.2, -1.12, 0.4), (3.15, -0.85, 0.6), sofa)
-    scene.add_box((2.2, -1.12, 2.9), (3.15, -0.85, 3.1), sofa)
-    scene.add_box((2.4, -1.12, 0.6), (3.15, -1.0, 2.9), solid((0.2, 0.62, 0.66), 0.15))
+    scene.add_box((2.2, 1.12, 0.4), (3.5, floor, 3.1), sofa)
+    scene.add_box((3.15, 0.5, 0.4), (3.5, 1.12, 3.1), sofa)
+    scene.add_box((2.2, 0.85, 0.4), (3.15, 1.12, 0.6), sofa)
+    scene.add_box((2.2, 0.85, 2.9), (3.15, 1.12, 3.1), sofa)
+    scene.add_box((2.4, 1.0, 0.6), (3.15, 1.12, 2.9), solid((0.2, 0.62, 0.66), 0.15))
 
-    scene.add_box((-3.5, floor, 0.5), (-3.0, 0.9, 3.0), shelf_material)
-    scene.add_cylinder(-2.2, 3.4, 0.28, floor, 1.5, marble_material, 0.3, 40)
-    scene.add_sphere((-1.3, -1.1, 0.4), 0.4, ball_material, 0.5, 60)
+    scene.add_box((-3.5, -0.9, 0.5), (-3.0, floor, 3.0), shelf_material)
+    scene.add_cylinder(-2.2, 3.4, 0.28, -1.5, floor, marble_material, 0.3, 40)
+    scene.add_sphere((-1.3, 1.1, 0.4), 0.4, ball_material, 0.5, 60)
 
-    scene.add_box((1.8, floor, -1.5), (2.4, -0.9, -0.9), crate_material)
-    scene.add_box((1.9, -0.9, -1.4), (2.3, -0.5, -1.0), crate_material)
+    scene.add_box((1.8, 0.9, -1.5), (2.4, floor, -0.9), crate_material)
+    scene.add_box((1.9, 0.5, -1.4), (2.3, 0.9, -1.0), crate_material)
 
-    scene.add_cylinder(-2.6, -1.0, 0.025, floor, 0.5, solid((0.15, 0.15, 0.17)), 0.5, 40)
-    scene.add_sphere((-2.6, 0.7, -1.0), 0.25, shade_material)
-    scene.add_box((-2.9, floor, -1.2), (-2.3, floor + 0.03, -0.8), solid((0.2, 0.2, 0.22)))
+    scene.add_cylinder(-2.6, -1.0, 0.025, -0.5, floor, solid((0.15, 0.15, 0.17)), 0.5, 40)
+    scene.add_sphere((-2.6, -0.7, -1.0), 0.25, shade_material)
+    scene.add_box((-2.9, floor - 0.03, -1.2), (-2.3, floor, -0.8), solid((0.2, 0.2, 0.22)))
 
     return scene
 
@@ -381,7 +381,7 @@ class Renderer:
                 specular[mask] = primitive.specular
                 shininess[mask] = primitive.shininess
 
-        floor_mask = (primitive_ids == 0) & (normals[:, 1] > 0.5)
+        floor_mask = (primitive_ids == 0) & (normals[:, 1] < -0.5)
         specular[floor_mask] = 0.12
         shininess[floor_mask] = 25
 
@@ -406,7 +406,7 @@ class Renderer:
         half_vector = light_direction - directions
         half_vector /= np.linalg.norm(half_vector, axis=1, keepdims=True) + 1e-9
         highlight = specular * np.clip((normals * half_vector).sum(axis=1), 0, None)**shininess
-        ambient = self.config.ambient + 0.12 * (0.5 * normals[:, 1] + 0.5)
+        ambient = self.config.ambient + 0.12 * (0.5 - 0.5 * normals[:, 1])
 
         result = color * (ambient + self.config.direct_light * diffuse * attenuation * shadow)[:, None]
         result += (highlight * shadow * attenuation)[:, None]
@@ -429,7 +429,7 @@ class Renderer:
         v = (np.arange(config.height) + 0.5) / config.height
         longitude, latitude = np.meshgrid((u - 0.5) * 2 * np.pi, (0.5 - v) * np.pi)
 
-        directions = np.stack([np.cos(latitude) * np.sin(longitude), np.sin(latitude), np.cos(latitude) * np.cos(longitude)], axis=-1).reshape(-1, 3)
+        directions = np.stack([np.cos(latitude) * np.sin(longitude), -np.sin(latitude), np.cos(latitude) * np.cos(longitude)], axis=-1).reshape(-1, 3)
         rgb = np.zeros((len(directions), 3))
         depth = np.zeros(len(directions))
 
