@@ -32,6 +32,7 @@ output/
 
 # Local datasets
 dummy_panorama/
+dummy_panorama_tool/scenes.toml
 
 # OS
 .DS_Store

@@ -8,7 +8,7 @@ from dummy_panorama_tool.dummy_panorama_reader import DummyPanoramaReader
 
 if __name__ == "__main__":
     # DIBR input data
-    data_dir = Path("dummy_panorama")
+    data_dir = Path("dummy_panorama/default")
     output_path = Path("output/erp_camera_walk.webp")
 
     # Animation Visualizer parameter

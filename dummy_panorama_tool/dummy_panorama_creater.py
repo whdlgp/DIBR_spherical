@@ -1,6 +1,8 @@
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
+import shutil
+import tomllib
 from tqdm import tqdm
 
 import numpy as np
@@ -12,7 +14,7 @@ from matplotlib import colormaps
 class RenderConfig:
     width: int = 2048
     height: int = 1024
-    camera: tuple = (0.4, -0.1, -1.2)
+    scene_file: Path = Path(__file__).parent / "scenes.toml"
     light: tuple = (0.0, -1.25, 0.5)
     room_min: tuple = (-3.5, -1.5, -4.5)
     room_max: tuple = (3.5, 1.5, 4.5)
@@ -339,14 +341,95 @@ def create_scene():
     return scene
 
 
+def make_rt(theta_x, theta_y, theta_z, tx, ty, tz):
+    rot_x = np.array([
+        [1, 0              ,  0              ],
+        [0, np.cos(theta_x), -np.sin(theta_x)],
+        [0, np.sin(theta_x),  np.cos(theta_x)]
+    ])
+
+    rot_y = np.array([
+        [ np.cos(theta_y), 0, np.sin(theta_y)],
+        [0               , 1, 0              ],
+        [-np.sin(theta_y), 0, np.cos(theta_y)]
+    ])
+
+    rot_z = np.array([
+        [np.cos(theta_z), -np.sin(theta_z), 0],
+        [np.sin(theta_z),  np.cos(theta_z), 0],
+        [0              ,  0              , 1]
+    ])
+
+    R = rot_z @ rot_y @ rot_x
+    t = np.array([[tx], [ty], [tz]], dtype=np.float64)
+
+    return R, t
+
+
+SCENE_KEYS = ("theta_x_deg", "theta_y_deg", "theta_z_deg", "tx", "ty", "tz")
+
+
+def load_scenes(path):
+    path = Path(path)
+    example = path.with_name(f"{path.stem}_example{path.suffix}")
+
+    if not path.exists():
+        shutil.copyfile(example, path)
+        print(f"{path.name} not found, copied from {example.name}")
+
+    with open(path, "rb") as file:
+        data = tomllib.load(file)
+
+    unknown = set(data) - {"scene"}
+
+    if unknown:
+        raise ValueError(f"Unknown top-level keys in {path}: {sorted(unknown)}")
+
+    scenes = []
+    names = set()
+
+    for index, entry in enumerate(data.get("scene", [])):
+        entry = dict(entry)
+        name = entry.pop("name", None)
+
+        if not isinstance(name, str) or not name or name == ".." or Path(name).name != name:
+            raise ValueError(f"scene #{index}: 'name' must be a plain folder name, got {name!r}")
+
+        if name in names:
+            raise ValueError(f"scene '{name}': duplicate name")
+
+        unknown = set(entry) - set(SCENE_KEYS)
+
+        if unknown:
+            raise ValueError(f"scene '{name}': unknown keys {sorted(unknown)}")
+
+        values = [entry.get(key, 0.0) for key in SCENE_KEYS]
+
+        if not all(isinstance(value, (int, float)) and not isinstance(value, bool) for value in values):
+            raise ValueError(f"scene '{name}': values must be numbers")
+
+        R, t = make_rt(*np.deg2rad(values[:3]), *values[3:])
+        names.add(name)
+        scenes.append((name, R, t))
+
+    if not scenes:
+        raise ValueError(f"No [[scene]] in {path}")
+
+    return scenes
+
+
 class Renderer:
-    def __init__(self, config, scene):
+    def __init__(self, config, scene, R, t):
         self.config = config
         self.scene = scene
-        self.camera = np.asarray(config.camera, dtype=float)
+        self.rotation = np.asarray(R, dtype=float)
+        self.camera = np.asarray(t, dtype=float).reshape(3)
         self.light = np.asarray(config.light, dtype=float)
         self.room_min = np.asarray(config.room_min, dtype=float)
         self.room_max = np.asarray(config.room_max, dtype=float)
+
+        if ((self.camera <= self.room_min) | (self.camera >= self.room_max)).any():
+            raise ValueError(f"Camera {self.camera.tolist()} is outside the room.")
 
     def render_rays(self, directions):
         count = len(directions)
@@ -430,6 +513,7 @@ class Renderer:
         longitude, latitude = np.meshgrid((u - 0.5) * 2 * np.pi, (0.5 - v) * np.pi)
 
         directions = np.stack([np.cos(latitude) * np.sin(longitude), -np.sin(latitude), np.cos(latitude) * np.cos(longitude)], axis=-1).reshape(-1, 3)
+        directions = directions @ self.rotation
         rgb = np.zeros((len(directions), 3))
         depth = np.zeros(len(directions))
 
@@ -459,7 +543,9 @@ class Renderer:
 def main():
     config = RenderConfig()
     scene = create_scene()
-    Renderer(config, scene).render()
+
+    for name, R, t in load_scenes(config.scene_file):
+        Renderer(replace(config, output_dir=config.output_dir / name), scene, R, t).render()
 
 
 if __name__ == "__main__":

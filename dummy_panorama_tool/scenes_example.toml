@@ -1,0 +1,87 @@
+# One [[scene]] = one ERP panorama
+#
+# Axes (same as DIBR)
+#   +x right
+#   +y down
+#   +z forward
+#
+# Parameters (omitted = 0)
+#   name                                    output folder (required, unique)
+#   theta_x_deg, theta_y_deg, theta_z_deg   rotation about x, y, z (deg)
+#   tx, ty, tz                              camera position (m), inside the room
+#
+# Transform
+#   R     = Rz @ Ry @ Rx
+#   X_cam = R @ (X_world - t)
+
+# Default Scene
+[[scene]]
+name = "default"
+theta_x_deg = 0.0
+theta_y_deg = 0.0
+theta_z_deg = 0.0
+tx = 0.4
+ty = -0.1
+tz = -1.2
+
+# Origin (R = I, t = 0)
+[[scene]]
+name = "origin"
+theta_x_deg = 0.0
+theta_y_deg = 0.0
+theta_z_deg = 0.0
+tx = 0.0
+ty = 0.0
+tz = 0.0
+
+# 4 cameras facing origin
+#   left -x, right +x, front +z, back -z
+#   tx, tz = +-1.0 m, theta_y = atan2(tx, -tz)
+[[scene]]
+name = "front_left"
+theta_x_deg = 0.0
+theta_y_deg = -135.0
+theta_z_deg = 0.0
+tx = -1.0
+ty = 0.0
+tz = 1.0
+
+[[scene]]
+name = "front_right"
+theta_x_deg = 0.0
+theta_y_deg = 135.0
+theta_z_deg = 0.0
+tx = 1.0
+ty = 0.0
+tz = 1.0
+
+[[scene]]
+name = "back_left"
+theta_x_deg = 0.0
+theta_y_deg = -45.0
+theta_z_deg = 0.0
+tx = -1.0
+ty = 0.0
+tz = -1.0
+
+[[scene]]
+name = "back_right"
+theta_x_deg = 0.0
+theta_y_deg = 45.0
+theta_z_deg = 0.0
+tx = 1.0
+ty = 0.0
+tz = -1.0
+
+# [[scene]]
+# name = "right_30cm"       # 0.3 m right
+# tx = 0.7
+# ty = -0.1
+# tz = -1.2
+
+# [[scene]]
+# name = "yaw_30deg"        # 30 deg about y
+# theta_y_deg = 30.0
+# tx = 0.4
+# ty = -0.1
+# tz = -1.2

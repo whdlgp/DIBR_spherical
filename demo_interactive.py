@@ -8,7 +8,7 @@ from util.interactive_viewer import InteractiveViewer
 
 if __name__ == "__main__":
     # DIBR input data
-    data_dir = Path("dummy_panorama")
+    data_dir = Path("dummy_panorama/default")
     #data_dir = Path("test_input")
 
     # Interactive viewer parameter
