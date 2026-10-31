@@ -1,0 +1,46 @@
+# Axes: +x right, +y down, +z forward (meters). The floor is y = 1.5.
+room = { min = [-3.5, -1.5, -4.5], max = [3.5, 1.5, 4.5] }
+light = { position = [0.0, -1.25, 0.5] }
+
+# object
+#   kind       box (min, max) | sphere (center, radius) | cylinder (center_x, center_z, radius, y_min, y_max; vertical axis)
+#   material   "rug" | "marble" | "ball" | "crate" | "shelf" | "shade"
+#              { name = "solid", color = [r, g, b], noise = 0.0, frequency = 40.0 }
+#              { name = "wood", base = [r, g, b] }
+#   specular   highlight strength (omitted = 0.0)
+#   shininess  highlight exponent (omitted = 1.0)
+object = [
+    # rug
+    { kind = "box", min = [-1.6, 1.48, 0.3], max = [1.6, 1.5, 3.3], material = "rug" },
+
+    # table: top, legs, red ball, blue cup, green book
+    { kind = "box", min = [-0.8, 0.75, 1.0], max = [0.8, 0.81, 2.0], material = { name = "wood", base = [0.45, 0.28, 0.14] }, specular = 0.2, shininess = 30 },
+    { kind = "box", min = [-0.78, 0.81, 1.02], max = [-0.72, 1.5, 1.08], material = { name = "wood", base = [0.40, 0.25, 0.12] } },
+    { kind = "box", min = [-0.78, 0.81, 1.92], max = [-0.72, 1.5, 1.98], material = { name = "wood", base = [0.40, 0.25, 0.12] } },
+    { kind = "box", min = [0.72, 0.81, 1.02], max = [0.78, 1.5, 1.08], material = { name = "wood", base = [0.40, 0.25, 0.12] } },
+    { kind = "box", min = [0.72, 0.81, 1.92], max = [0.78, 1.5, 1.98], material = { name = "wood", base = [0.40, 0.25, 0.12] } },
+    { kind = "sphere", center = [0.25, 0.61, 1.55], radius = 0.14, material = { name = "solid", color = [0.85, 0.1, 0.1] }, specular = 0.7, shininess = 80 },
+    { kind = "cylinder", center_x = -0.35, center_z = 1.4, radius = 0.07, y_min = 0.45, y_max = 0.75, material = { name = "solid", color = [0.15, 0.35, 0.8] }, specular = 0.5, shininess = 50 },
+    { kind = "box", min = [-0.1, 0.7, 1.2], max = [0.15, 0.75, 1.45], material = { name = "solid", color = [0.15, 0.55, 0.25], noise = 0.1 } },
+
+    # sofa: seat, arm, back, front, cushion
+    { kind = "box", min = [2.2, 1.12, 0.4], max = [3.5, 1.5, 3.1], material = { name = "solid", color = [0.15, 0.5, 0.55], noise = 0.15 } },
+    { kind = "box", min = [3.15, 0.5, 0.4], max = [3.5, 1.12, 3.1], material = { name = "solid", color = [0.15, 0.5, 0.55], noise = 0.15 } },
+    { kind = "box", min = [2.2, 0.85, 0.4], max = [3.15, 1.12, 0.6], material = { name = "solid", color = [0.15, 0.5, 0.55], noise = 0.15 } },
+    { kind = "box", min = [2.2, 0.85, 2.9], max = [3.15, 1.12, 3.1], material = { name = "solid", color = [0.15, 0.5, 0.55], noise = 0.15 } },
+    { kind = "box", min = [2.4, 1.0, 0.6], max = [3.15, 1.12, 2.9], material = { name = "solid", color = [0.2, 0.62, 0.66], noise = 0.15 } },
+
+    # shelf, marble column, beach ball
+    { kind = "box", min = [-3.5, -0.9, 0.5], max = [-3.0, 1.5, 3.0], material = "shelf" },
+    { kind = "cylinder", center_x = -2.2, center_z = 3.4, radius = 0.28, y_min = -1.5, y_max = 1.5, material = "marble", specular = 0.3, shininess = 40 },
+    { kind = "sphere", center = [-1.3, 1.1, 0.4], radius = 0.4, material = "ball", specular = 0.5, shininess = 60 },
+
+    # crates
+    { kind = "box", min = [1.8, 0.9, -1.5], max = [2.4, 1.5, -0.9], material = "crate" },
+    { kind = "box", min = [1.9, 0.5, -1.4], max = [2.3, 0.9, -1.0], material = "crate" },
+
+    # floor lamp: pole, shade, base
+    { kind = "cylinder", center_x = -2.6, center_z = -1.0, radius = 0.025, y_min = -0.5, y_max = 1.5, material = { name = "solid", color = [0.15, 0.15, 0.17] }, specular = 0.5, shininess = 40 },
+    { kind = "sphere", center = [-2.6, -0.7, -1.0], radius = 0.25, material = "shade" },
+    { kind = "box", min = [-2.9, 1.47, -1.2], max = [-2.3, 1.5, -0.8], material = { name = "solid", color = [0.2, 0.2, 0.22] } },
+]

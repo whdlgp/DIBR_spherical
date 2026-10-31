@@ -22,7 +22,8 @@ class RenderConfig:
         depth_scale: depth PNG scale, stored value = depth [m] * depth_scale (uint16).
         settings: render parameters (resolution and shading constants).
     """
-    scene_file: Path = Path(__file__).parent / "scenes.toml"
+    scene_file: Path = Path(__file__).parent / "scene.toml"
+    camera_pose_file: Path = Path(__file__).parent / "camera_pose.toml"
     backend: tuple = ("wgpu", "numpy")
     output_dir: Path = Path("dummy_panorama")
     depth_scale: float = 1000.0
@@ -67,14 +68,14 @@ def make_rt(theta_x: float, theta_y: float, theta_z: float, tx: float, ty: float
     return R, t
 
 
-SCENE_KEYS = ("theta_x_deg", "theta_y_deg", "theta_z_deg", "tx", "ty", "tz")
+CAMERA_KEYS = ("theta_x_deg", "theta_y_deg", "theta_z_deg", "tx", "ty", "tz")
 
 
-def load_scenes(path: Path) -> list[tuple[str, np.ndarray, np.ndarray]]:
+def load_camera_pose(path: Path) -> list[tuple[str, np.ndarray, np.ndarray]]:
     """Load camera poses from a TOML file. A missing file is copied from <name>_example.toml next to it.
 
     Args:
-        path: TOML file of [[scene]] tables, see scenes_example.toml.
+        path: TOML file of [[camera]] tables, see camera_pose_example.toml.
 
     Returns:
         List of (name, R, t), made by make_rt.
@@ -86,34 +87,34 @@ def load_scenes(path: Path) -> list[tuple[str, np.ndarray, np.ndarray]]:
         print(f"{path.name} not found, copied from {example.name}")
     with open(path, "rb") as file:
         data = tomllib.load(file)
-    unknown = set(data) - {"scene"}
+    unknown = set(data) - {"camera"}
     if unknown:
         raise ValueError(f"Unknown top-level keys in {path}: {sorted(unknown)}")
 
-    scenes = []
+    cameras = []
     names = set()
-    for index, entry in enumerate(data.get("scene", [])):
+    for index, entry in enumerate(data.get("camera", [])):
         entry = dict(entry)
         name = entry.pop("name", None)
         if not isinstance(name, str) or not name or name == ".." or Path(name).name != name:
-            raise ValueError(f"scene #{index}: 'name' must be a plain folder name, got {name!r}")
+            raise ValueError(f"camera #{index}: 'name' must be a plain folder name, got {name!r}")
         if name in names:
-            raise ValueError(f"scene '{name}': duplicate name")
-        unknown = set(entry) - set(SCENE_KEYS)
+            raise ValueError(f"camera '{name}': duplicate name")
+        unknown = set(entry) - set(CAMERA_KEYS)
         if unknown:
-            raise ValueError(f"scene '{name}': unknown keys {sorted(unknown)}")
+            raise ValueError(f"camera '{name}': unknown keys {sorted(unknown)}")
 
-        values = [entry.get(key, 0.0) for key in SCENE_KEYS]
+        values = [entry.get(key, 0.0) for key in CAMERA_KEYS]
         if not all(isinstance(value, (int, float)) and not isinstance(value, bool) for value in values):
-            raise ValueError(f"scene '{name}': values must be numbers")
+            raise ValueError(f"camera '{name}': values must be numbers")
         R, t = make_rt(*np.deg2rad(values[:3]), *values[3:])
         names.add(name)
-        scenes.append((name, R, t))
+        cameras.append((name, R, t))
 
-    if not scenes:
-        raise ValueError(f"No [[scene]] in {path}")
+    if not cameras:
+        raise ValueError(f"No [[camera]] in {path}")
 
-    return scenes
+    return cameras
 
 
 def save_outputs(rgb: np.ndarray, depth: np.ndarray, output_dir: Path, depth_scale: float) -> None:
@@ -140,9 +141,9 @@ def save_outputs(rgb: np.ndarray, depth: np.ndarray, output_dir: Path, depth_sca
 
 
 def main() -> None:
-    config = RenderConfig(backend="numpy")
-    scene = create_scene()
-    cameras = load_scenes(config.scene_file)
+    config = RenderConfig()
+    scene = create_scene(config.scene_file)
+    cameras = load_camera_pose(config.camera_pose_file)
     for _, _, t in cameras:
         scene.check_camera(t)
 
@@ -150,6 +151,7 @@ def main() -> None:
     print(f"Renderer backend: {type(renderer).__name__}")
     render_scene = renderer.build(scene, config.settings)
     for name, R, t in cameras:
+        print(f"Render \"{name}\"")
         rgb, depth = renderer.to_erp(render_scene, R, t)
         save_outputs(rgb, depth, config.output_dir / name, config.depth_scale)
 

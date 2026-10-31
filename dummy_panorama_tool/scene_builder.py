@@ -1,3 +1,6 @@
+import shutil
+import tomllib
+from pathlib import Path
 import numpy as np
 from dataclasses import dataclass, field
 
@@ -77,38 +80,53 @@ def wood_material(base: tuple) -> tuple:
     return ("wood", *base)
 
 
-def create_scene() -> Scene:
-    """Make the dummy room: rug, table, sofa, shelf, marble column, ball, crates and a floor lamp."""
-    scene = Scene(light=(0.0, -1.25, 0.5), room_min=(-3.5, -1.5, -4.5), room_max=(3.5, 1.5, 4.5))
-    floor = 1.5
+OBJECT_KEYS = {"box": ("min", "max"), "sphere": ("center", "radius"), "cylinder": ("center_x", "center_z", "radius", "y_min", "y_max")}
+MATERIALS = {"rug": rug_material, "marble": marble_material, "ball": ball_material, "crate": crate_material, "shelf": shelf_material, "shade": shade_material}
 
-    scene.add_box((-1.6, floor - 0.02, 0.3), (1.6, floor, 3.3), rug_material)
-    scene.add_box((-0.8, 0.75, 1.0), (0.8, 0.81, 2.0), wood_material((0.45, 0.28, 0.14)), 0.2, 30)
 
-    for x in (-0.78, 0.72):
-        for z in (1.02, 1.92):
-            scene.add_box((x, 0.81, z), (x + 0.06, floor, z + 0.06), wood_material((0.40, 0.25, 0.12)))
+def make_material(spec: str | dict) -> tuple:
+    """Make a material from a TOML value: a built-in name, or a table of solid() or wood_material() arguments plus name."""
+    if isinstance(spec, str):
+        if spec not in MATERIALS:
+            raise ValueError(f"Unknown material '{spec}'. Built-in materials: {sorted(MATERIALS)}.")
+        return MATERIALS[spec]
+    params = dict(spec)
+    name = params.pop("name", None)
+    factories = {"solid": solid, "wood": wood_material}
+    if name not in factories:
+        raise ValueError(f"Unknown material table name {name!r}. Use one of {sorted(factories)}.")
+    return factories[name](**params)
 
-    scene.add_sphere((0.25, 0.61, 1.55), 0.14, solid((0.85, 0.1, 0.1)), 0.7, 80)
-    scene.add_cylinder(-0.35, 1.4, 0.07, 0.45, 0.75, solid((0.15, 0.35, 0.8)), 0.5, 50)
-    scene.add_box((-0.1, 0.70, 1.2), (0.15, 0.75, 1.45), solid((0.15, 0.55, 0.25), 0.1))
 
-    sofa = solid((0.15, 0.5, 0.55), 0.15)
-    scene.add_box((2.2, 1.12, 0.4), (3.5, floor, 3.1), sofa)
-    scene.add_box((3.15, 0.5, 0.4), (3.5, 1.12, 3.1), sofa)
-    scene.add_box((2.2, 0.85, 0.4), (3.15, 1.12, 0.6), sofa)
-    scene.add_box((2.2, 0.85, 2.9), (3.15, 1.12, 3.1), sofa)
-    scene.add_box((2.4, 1.0, 0.6), (3.15, 1.12, 2.9), solid((0.2, 0.62, 0.66), 0.15))
+def create_scene(path: Path) -> Scene:
+    """Make a scene from a TOML file (see scene.toml).
 
-    scene.add_box((-3.5, -0.9, 0.5), (-3.0, floor, 3.0), shelf_material)
-    scene.add_cylinder(-2.2, 3.4, 0.28, -1.5, floor, marble_material, 0.3, 40)
-    scene.add_sphere((-1.3, 1.1, 0.4), 0.4, ball_material, 0.5, 60)
+    Args:
+        path: TOML file with room, light and object entries.
 
-    scene.add_box((1.8, 0.9, -1.5), (2.4, floor, -0.9), crate_material)
-    scene.add_box((1.9, 0.5, -1.4), (2.3, 0.9, -1.0), crate_material)
+    Returns:
+        Scene.
+    """
+    path = Path(path)
+    example = path.with_name(f"{path.stem}_example{path.suffix}")
+    if not path.exists():
+        shutil.copyfile(example, path)
+        print(f"{path.name} not found, copied from {example.name}")
+    with open(path, "rb") as file:
+        data = tomllib.load(file)
+    unknown = set(data) - {"room", "light", "object"}
+    if unknown:
+        raise ValueError(f"Unknown top-level keys in {path}: {sorted(unknown)}")
 
-    scene.add_cylinder(-2.6, -1.0, 0.025, -0.5, floor, solid((0.15, 0.15, 0.17)), 0.5, 40)
-    scene.add_sphere((-2.6, -0.7, -1.0), 0.25, shade_material)
-    scene.add_box((-2.9, floor - 0.03, -1.2), (-2.3, floor, -0.8), solid((0.2, 0.2, 0.22)))
+    scene = Scene(light=tuple(data["light"]["position"]), room_min=tuple(data["room"]["min"]), room_max=tuple(data["room"]["max"]))
+    for i, obj in enumerate(data.get("object", [])):
+        kind = obj.get("kind")
+        if kind not in OBJECT_KEYS:
+            raise ValueError(f"object #{i}: unknown kind {kind!r}, expected one of {sorted(OBJECT_KEYS)}")
+        keys = set(obj) - {"kind", "specular", "shininess"}
+        required = {"material", *OBJECT_KEYS[kind]}
+        if keys != required:
+            raise ValueError(f"object #{i} ({kind}): expected keys {sorted(required)}, got {sorted(keys)}")
+        getattr(scene, f"add_{kind}")(*[obj[key] for key in OBJECT_KEYS[kind]], make_material(obj["material"]), obj.get("specular", 0.0), obj.get("shininess", 1.0))
 
     return scene
