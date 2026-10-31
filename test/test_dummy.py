@@ -1,16 +1,15 @@
-from pathlib import Path
 import numpy as np
 
 from dibr import create_dibr
 from util.show import show
-from dummy_panorama_tool.dummy_panorama_creater import RenderConfig, load_scenes
+from dummy_panorama_tool.dummy_panorama_creater import RenderConfig, load_camera_pose
 from dummy_panorama_tool.dummy_panorama_reader import DummyPanoramaReader
 
 
 if __name__ == "__main__":
     # Scenes (same file used to render the dummy panoramas)
     config = RenderConfig()
-    scenes = {name: (R, t) for name, R, t in load_scenes(config.scene_file)}
+    scenes = {name: (R, t) for name, R, t in load_camera_pose(config.camera_pose_file)}
 
     # Source scene: origin (R = I, t = 0)
     R_src, t_src = scenes.pop("origin")
