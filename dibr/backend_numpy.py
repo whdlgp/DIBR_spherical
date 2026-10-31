@@ -91,6 +91,38 @@ def make_color(image: np.ndarray) -> np.ndarray:
     return image.reshape(-1, image.shape[2])
 
 
+def filter_faces(world_coord: np.ndarray, faces: np.ndarray, max_tri_stretch: float) -> np.ndarray:
+    """Remove triangles exceeding the maximum stretch ratio.
+
+    Args:
+        world_coord: vertex 3D coordinates, shape (3, N).
+        faces: triangle vertex indices, shape (F, 3).
+        max_tri_stretch: maximum allowed triangle stretch ratio.
+
+    Returns:
+        Filtered triangle vertex indices, shape (F, 3).
+    """
+    tri = world_coord[:, faces].transpose(1, 2, 0)
+
+    e0 = tri[:, 1] - tri[:, 0]
+    e1 = tri[:, 2] - tri[:, 0]
+    e2 = tri[:, 2] - tri[:, 1]
+
+    longest = np.maximum.reduce([
+        np.linalg.norm(e0, axis=1),
+        np.linalg.norm(e1, axis=1),
+        np.linalg.norm(e2, axis=1)
+    ])
+
+    area2 = np.linalg.norm(np.cross(e0, e1), axis=1)
+    stretch = longest ** 2 / np.maximum(area2, 1e-8)
+
+    bad = (area2 <= 1e-8) | (stretch > max_tri_stretch)
+    faces[bad] = faces[bad, :1]
+
+    return faces
+
+
 def apply_rt(world_coord: np.ndarray, R: np.ndarray, t: np.ndarray) -> np.ndarray:
     """Apply R|t to 3D coordinates.
 
@@ -286,8 +318,16 @@ def render_image(color: np.ndarray, faces: np.ndarray, face_idx: np.ndarray, wei
 class NumpyDIBR(SphericalDIBR):
     """Spherical DIBR by numpy array operations."""
 
-    def build(self, depth: np.ndarray, image: np.ndarray) -> NumpyMesh:
-        return NumpyMesh(unproject_erp(depth), make_faces(depth), make_color(image), depth.shape[0], depth.shape[1])
+    def build(self, depth: np.ndarray, image: np.ndarray, max_tri_stretch: float = 0.0) -> NumpyMesh:
+        world_coord = unproject_erp(depth)
+        faces = make_faces(depth)
+
+        if max_tri_stretch > 0:
+            faces = filter_faces(world_coord, faces, max_tri_stretch)
+
+        color = make_color(image)
+
+        return NumpyMesh(world_coord, faces, color, depth.shape[0], depth.shape[1])
 
     def to_erp(self, mesh: NumpyMesh, R: np.ndarray, t: np.ndarray) -> np.ndarray:
         self._check(mesh)

@@ -13,12 +13,13 @@ class SphericalDIBR(ABC):
     """Common interface of the spherical DIBR backends."""
 
     @abstractmethod
-    def build(self, depth: np.ndarray, image: np.ndarray) -> Mesh:
+    def build(self, depth: np.ndarray, image: np.ndarray, max_tri_stretch: float = 0.0) -> Mesh:
         """src ERP image → triangle mesh. Run once, then render with any R|t.
 
         Args:
             depth: src ERP depth map (radius), shape (H, W).
             image: src ERP image, shape (H, W, C).
+            max_tri_stretch: Maximum allowed triangle stretch ratio. 0 disables filtering.
 
         Returns:
             Triangle mesh.

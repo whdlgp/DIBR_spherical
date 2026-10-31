@@ -34,9 +34,37 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
 @group(0) @binding(0) var<storage, read> depth: array<f32>;
 @group(0) @binding(1) var<storage, read_write> faces: array<u32>;
 @group(0) @binding(2) var<uniform> grid: vec4<u32>;
+@group(0) @binding(3) var<storage, read> world_coord: array<f32>;
 
 fn is_valid(index: u32) -> bool {
     return depth[index] > 0.0 && depth[index] < 1e38;
+}
+
+fn is_stretched(a: u32, b: u32, c: u32) -> bool {
+    let threshold = bitcast<f32>(grid.z);
+
+    if (threshold <= 0.0) {
+        return false;
+    }
+
+    let count = grid.x * grid.y;
+
+    let p0 = vec3<f32>(world_coord[a], world_coord[count + a], world_coord[2u * count + a]);
+    let p1 = vec3<f32>(world_coord[b], world_coord[count + b], world_coord[2u * count + b]);
+    let p2 = vec3<f32>(world_coord[c], world_coord[count + c], world_coord[2u * count + c]);
+
+    let e0 = p1 - p0;
+    let e1 = p2 - p0;
+    let e2 = p2 - p1;
+
+    let longest = max(length(e0), max(length(e1), length(e2)));
+    let area2 = length(cross(e0, e1));
+
+    if (area2 <= 1e-8) {
+        return true;
+    }
+
+    return longest * longest / area2 > threshold;
 }
 
 @compute @workgroup_size(8, 8)
@@ -54,12 +82,12 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     let d = (id.y + 1u) * width + col_next;
 
     var tri0 = vec3<u32>(a, c, b);
-    if (!(is_valid(a) && is_valid(c) && is_valid(b))) {
+    if (!(is_valid(a) && is_valid(c) && is_valid(b)) || is_stretched(a, c, b)) {
         tri0 = vec3<u32>(a, a, a);
     }
 
     var tri1 = vec3<u32>(b, c, d);
-    if (!(is_valid(b) && is_valid(c) && is_valid(d))) {
+    if (!(is_valid(b) && is_valid(c) && is_valid(d)) || is_stretched(b, c, d)) {
         tri1 = vec3<u32>(b, b, b);
     }
 
@@ -354,12 +382,13 @@ class WgpuDIBR(SphericalDIBR):
             fragment={"module": module, "entry_point": "fs_main", "targets": [{"format": wgpu.TextureFormat.r32uint}, {"format": wgpu.TextureFormat.rg32uint}]},
         )
 
-    def build(self, depth: np.ndarray, image: np.ndarray) -> WgpuMesh:
+    def build(self, depth: np.ndarray, image: np.ndarray, max_tri_stretch: float = 0.0) -> WgpuMesh:
         """src ERP image → triangle mesh on the GPU.
 
         Args:
             depth: src ERP depth map (radius), shape (H, W).
             image: src ERP image (uint8, 3 channels), shape (H, W, 3).
+            max_tri_stretch: Maximum allowed triangle stretch ratio. 0 disables filtering.
 
         Returns:
             Triangle mesh.
@@ -369,13 +398,13 @@ class WgpuDIBR(SphericalDIBR):
 
         height, width = depth.shape
         depth_buffer = self.device.create_buffer_with_data(data=np.ascontiguousarray(depth, dtype=np.float32), usage=wgpu.BufferUsage.STORAGE)
-        grid = np.array([width, height, 0, 0], dtype=np.uint32).tobytes()
+        grid = np.array([width, height, np.float32(max_tri_stretch).view(np.uint32), 0], dtype=np.uint32).tobytes()
 
         world_coord = self._storage(3 * height * width * 4)
         self._compute("unproject_erp", [depth_buffer, world_coord, grid], (height, width))
 
         faces = self._storage(2 * (height - 1) * width * 3 * 4)
-        self._compute("make_faces", [depth_buffer, faces, grid], (height, width))
+        self._compute("make_faces", [depth_buffer, faces, grid, world_coord], (height, width))
 
         color = np.full((height * width, 4), 255, dtype=np.uint8)
         color[:, :3] = image.reshape(-1, 3)
